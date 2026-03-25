@@ -22,8 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifndef G_OS_WIN32
 #include <sys/wait.h>
 #include <sys/stat.h>
+#endif
 
 #include "myloader.h"
 #include "myloader_stream.h"
@@ -92,7 +94,9 @@ FILE * myl_open(char *filename, const char *type){
   int child_proc;
   (void) child_proc;
   gchar **command=NULL;
+#ifndef G_OS_WIN32
   struct stat a;
+#endif
   trace("myl_open %s", filename);
   if (get_command_and_basename(filename, &command, &basename)){
     // Acquire decompressor slot (throttle concurrent processes)
@@ -109,6 +113,50 @@ FILE * myl_open(char *filename, const char *type){
       fifoname=g_strdup_printf("%s/%s", fifo_directory, basefilename);
       g_free(basename);
     }
+#ifdef G_OS_WIN32
+    if (g_file_test(fifoname, G_FILE_TEST_EXISTS)){
+      g_unlink(fifoname);
+    }
+
+    child_proc = execute_file_per_thread(filename, fifoname, command);
+    if (child_proc < 0){
+      g_critical("cannot decompress file %s (%d)", filename, errno);
+      errors++;
+      release_decompressor_slot();
+      return NULL;
+    }
+    file=g_fopen(fifoname, type);
+    if (file == NULL){
+      g_critical("cannot open decompressed file %s (%d)", fifoname, errno);
+      errors++;
+      g_unlink(fifoname);
+      release_decompressor_slot();
+      return NULL;
+    }
+    if (stream && !no_delete)
+      g_unlink(filename);
+
+    g_mutex_lock(fifo_table_mutex);
+    struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+    if (f!=NULL){
+      g_mutex_lock(f->mutex);
+      g_mutex_unlock(fifo_table_mutex);
+      f->pid = 0;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=fifoname;
+      f->uses_decompressor=TRUE;
+    }else{
+      f=g_new0(struct fifo, 1);
+      f->mutex=g_mutex_new();
+      g_mutex_lock(f->mutex);
+      f->pid = 0;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=fifoname;
+      f->uses_decompressor=TRUE;
+      g_hash_table_insert(fifo_hash,file,f);
+      g_mutex_unlock(fifo_table_mutex);
+    }
+#else
 // This 2 lines simulates if a common file or a fifo file is present in the fifo dir:
 //    g_file_set_contents(fifoname, "   ",2,NULL );
 //    mkfifo(fifoname,0666);
@@ -161,8 +209,14 @@ FILE * myl_open(char *filename, const char *type){
       g_hash_table_insert(fifo_hash,file,f);
       g_mutex_unlock(fifo_table_mutex);
     }
+#endif
 
   }else{
+#ifdef G_OS_WIN32
+    file=g_fopen(filename, type);
+    if (stream && !no_delete)
+      g_unlink(filename);
+#else
     lstat(filename, &a);
     if ((a.st_mode & S_IFMT) == S_IFIFO){
       g_warning("FIFO file found %s. Skipping", filename);
@@ -172,6 +226,7 @@ FILE * myl_open(char *filename, const char *type){
       if (stream && !no_delete)
         g_unlink(filename);
     }
+#endif
   }
   return file;
 }
@@ -184,6 +239,17 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
   fclose(file);
 
   if (f != NULL){
+#ifdef G_OS_WIN32
+    if (f->stdout_filename != NULL){
+      g_unlink(f->stdout_filename);
+    }
+    g_mutex_lock(fifo_table_mutex);
+    g_mutex_unlock(f->mutex);
+    g_mutex_unlock(fifo_table_mutex);
+    if (f->uses_decompressor){
+      release_decompressor_slot();
+    }
+#else
     int status=0;
     waitpid(f->pid, &status, 0);
     g_mutex_lock(fifo_table_mutex);
@@ -197,6 +263,7 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
     if (f->uses_decompressor){
       release_decompressor_slot();
     }
+#endif
   }
   (void) rm;
   (void) filename;

@@ -23,6 +23,7 @@ struct configuration;
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 
+#include <glib.h>
 #include "mydumper.h"
 #include "mydumper_create_jobs.h"
 #include "mydumper_table.h"

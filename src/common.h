@@ -17,6 +17,7 @@
 
 #include <mysql.h>
 #include <stdio.h>
+#include <time.h>
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 #define IS_TRX_TABLE 2
@@ -177,6 +178,10 @@ GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
+char *m_getpass(const char *prompt);
+struct tm *m_localtime_r(const time_t *timer, struct tm *result);
+void m_sleep_seconds(guint seconds);
+void m_sleep_microseconds(guint64 microseconds);
 
 void print_int(const char*_key, int val);
 void print_string(const char*_key, const char *val);

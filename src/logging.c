@@ -29,6 +29,7 @@
 #include <zlib.h>
 #include <signal.h>
 #include <glib/gstdio.h>
+#include "common.h"
 
 gchar *logfile;
 FILE *logoutfile;
@@ -59,7 +60,7 @@ void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
 #endif
 
   time(&rawtime);
-  localtime_r(&rawtime, &timeinfo);
+  m_localtime_r(&rawtime, &timeinfo);
   strftime(date, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
 
   GString *message_out = g_string_new(date);

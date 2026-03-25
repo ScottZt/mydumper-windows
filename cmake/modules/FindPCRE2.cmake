@@ -24,7 +24,26 @@ else()
     # Look for the library.
     if (WIN32 AND "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         # For the Debug build, the pcre2 library is called pcre2-8d. The Release build should be pcre2-8.
-        find_library(PCRE2_LIBRARY pcre2-8d)
+        find_library(PCRE2_LIBRARY
+            NAMES
+            libpcre2-8d.dll.a
+            pcre2-8d
+            libpcre2-8.dll.a
+            pcre2-8)
+    elseif(WIN32)
+        find_library(PCRE2_LIBRARY
+            NAMES
+            libpcre2-8.dll.a
+            pcre2-8
+            PATHS
+            /usr/lib
+            /usr/lib64
+            /usr/local/lib
+            /usr/local/lib64
+            /opt/local/lib
+            /sw/lib
+            ${CMAKE_LIBRARY_PATH}
+            ${CMAKE_INSTALL_PREFIX}/lib)
     else()
         find_library(PCRE2_LIBRARY
             NAMES

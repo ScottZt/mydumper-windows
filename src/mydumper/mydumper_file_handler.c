@@ -21,8 +21,10 @@
 
 #include <gio/gio.h>
 #include <errno.h>
-#include <sys/wait.h>
 #include <fcntl.h>
+#ifndef G_OS_WIN32
+#include <sys/wait.h>
+#endif
 
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
@@ -77,6 +79,8 @@ int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struc
 }
 
 // PIPE related functions 
+
+#ifndef G_OS_WIN32
 
 void close_file_queue_push(struct fifo *f){
   g_async_queue_push(close_file_queue, f);
@@ -273,6 +277,22 @@ void initialize_file_handler(){
     }
   }
 }
+
+#else
+
+void wait_close_files(){
+}
+
+void set_pipe_backup(){
+  m_critical("Pipe backup is not supported on Windows builds");
+}
+
+void initialize_file_handler(){
+  m_open  = &m_open_file;
+  m_close = &m_close_file;
+}
+
+#endif
 
 struct filename_queue_element * new_filename_queue_element(struct db_table *dbt,gchar *filename,GAsyncQueue *done){
   struct filename_queue_element *sf=g_new0(struct filename_queue_element, 1);

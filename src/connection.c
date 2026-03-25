@@ -339,10 +339,7 @@ void hide_password(int argc, char *argv[]){
 }
 
 char *passwordPrompt(void) {
-  char *p;
-  p = getpass("Enter MySQL Password: ");
-
-  return p;
+  return m_getpass("Enter MySQL Password: ");
 }
 
 void ask_password(){

@@ -23,8 +23,6 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
-#include <sys/wait.h>
 
 #include "myloader.h"
 #include "myloader_common.h"
@@ -750,10 +748,15 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
               g_free(load_data_fifo_filename);
               load_data_fifo_filename=new_load_data_fifo_filename;
             }
+            #ifndef _WIN32
             if (mkfifo(load_data_fifo_filename,0666)){
               g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
             }
-            //load_data_child_pid = 
+            #else
+            if (g_file_test(load_data_fifo_filename, G_FILE_TEST_EXISTS)){
+              g_unlink(load_data_fifo_filename);
+            }
+            #endif
             execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
             release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
@@ -774,7 +777,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           if (is_fifo){
             if (stream && !no_delete) 
               g_unlink(load_data_filename);
+#ifndef _WIN32
             m_remove0(NULL, load_data_fifo_filename);
+#endif
           }else
             m_remove(NULL, load_data_filename);
         }else{

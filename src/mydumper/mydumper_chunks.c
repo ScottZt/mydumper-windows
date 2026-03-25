@@ -499,12 +499,12 @@ void table_job_enqueue(struct table_queuing *q)
       if (are_there_jobs_defining || max_threads_per_table_reached){
         trace("table_job_enqueue: Are jobs defining or Max threads reached, try again later?");
         g_async_queue_push(q->request_chunk, GINT_TO_POINTER(1));
-        usleep(1);
+        m_sleep_microseconds(1);
         continue;
       }
       if (are_string_tables_processing){
         g_async_queue_push(q->request_chunk, GINT_TO_POINTER(1));
-        usleep(1);
+        m_sleep_microseconds(1);
         continue;      
       }
 //      g_debug("chunk_builder_thread: There were not job defined");

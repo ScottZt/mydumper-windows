@@ -1,0 +1,86 @@
+# Started dump at: 2026-03-25 10:42:40
+[config]
+quote-character = BACKTICK
+
+[myloader_session_variables]
+SQL_MODE='NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' /*!40101
+
+[source]
+# Channel_Name = '' # It can be use to setup replication FOR CHANNEL
+# SOURCE_LOG_FILE = "MySQL80-bin.000141"
+# SOURCE_LOG_POS = 157
+
+[`tick_monitor`.`alert_rules`]
+real_table_name=alert_rules
+rows = 0
+schema_checksum = 5f70cfb4
+indexes_checksum = 58bfd623
+
+[`tick_monitor`.`contract_catalog`]
+real_table_name=contract_catalog
+rows = 833
+schema_checksum = 74b784d
+indexes_checksum = b76a98d4
+
+[`tick_monitor`.`contracts`]
+real_table_name=contracts
+rows = 4
+schema_checksum = d66a9581
+indexes_checksum = 65098aea
+
+[`tick_monitor`.`ticks`]
+real_table_name=ticks
+rows = 555029
+schema_checksum = 72b36f09
+indexes_checksum = c9e541e9
+
+[`trading_db`.`accounts`]
+real_table_name=accounts
+rows = 1
+schema_checksum = 91575fdd
+indexes_checksum = 2db75332
+
+[`trading_db`.`alembic_version`]
+real_table_name=alembic_version
+rows = 1
+schema_checksum = 4af55dce
+indexes_checksum = 4f5a7fd3
+
+[`trading_db`.`orders`]
+real_table_name=orders
+rows = 4085
+schema_checksum = 8f05464
+indexes_checksum = b69bdcfd
+
+[`trading_db`.`positions`]
+real_table_name=positions
+rows = 1
+schema_checksum = d335128e
+indexes_checksum = 296617b6
+
+[`trading_db`.`trades`]
+real_table_name=trades
+rows = 0
+schema_checksum = ee932bd1
+indexes_checksum = f535c9a9
+
+[`trading_db`.`users`]
+real_table_name=users
+rows = 1
+schema_checksum = 277e6fd0
+indexes_checksum = 931faad2
+
+[`tick_monitor`]
+schema_checksum = E7DF63B3
+
+[`trading_db`]
+schema_checksum = 25644127
+[config]
+max-statement-size = 1000002
+num-sequences = 0
+# Finished dump at: 2026-03-25 10:42:41
+
+
+
+
+

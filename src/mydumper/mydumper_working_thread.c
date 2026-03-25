@@ -350,7 +350,7 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
   // set hundreds of threads
   while (g_async_queue_length(queue)>200000){
     g_warning("Too many jobs in the queue. We are pausing the jobs creation for 5 seconds.");
-    sleep(5);
+    m_sleep_seconds(5);
   }
   g_async_queue_push(queue, element);
 }

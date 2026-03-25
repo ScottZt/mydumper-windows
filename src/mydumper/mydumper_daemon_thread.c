@@ -23,7 +23,9 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#ifndef G_OS_WIN32
 #include <glib-unix.h>
+#endif
 
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
@@ -37,6 +39,9 @@ GAsyncQueue *start_scheduled_dump;
 guint dump_number=0;
 
 void initialize_daemon_thread(){
+#ifdef G_OS_WIN32
+    m_critical("Daemon mode is not supported on Windows builds");
+#else
     pid_t pid, sid;
 
     pid = fork();
@@ -78,6 +83,7 @@ void initialize_daemon_thread(){
         dump_number = 0;
     }
     g_object_unref(last_dump);
+#endif
 }
 
 gboolean run_snapshot(gpointer *data) {
@@ -90,6 +96,11 @@ gboolean run_snapshot(gpointer *data) {
 
 
 void *exec_thread(GOptionContext *context) {
+#ifdef _WIN32
+  (void)context;
+  m_critical("Daemon mode is not supported on Windows builds");
+  return NULL;
+#else
 
   struct configuration conf;
   start_pmm_thread((void *)&conf);
@@ -123,10 +134,14 @@ void *exec_thread(GOptionContext *context) {
     }
   }
   return NULL;
+#endif
 }
 
 
 void run_daemon(){
+#ifdef G_OS_WIN32
+    m_critical("Daemon mode is not supported on Windows builds");
+#else
     start_scheduled_dump = g_async_queue_new();
     m_thread_new("daemon", (GThreadFunc)exec_thread, NULL, "Daemon thread could not be created");
     // Run initial snapshot
@@ -143,4 +158,5 @@ void run_daemon(){
     m1 = g_main_loop_new(NULL, TRUE);
     g_main_loop_run(m1);
     g_source_remove(sigsource);
+#endif
 }

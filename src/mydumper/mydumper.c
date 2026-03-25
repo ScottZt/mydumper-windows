@@ -28,7 +28,9 @@
 #include <string.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#ifndef G_OS_WIN32
 #include <glib-unix.h>
+#endif
 #include <locale.h>
 
 #include "mydumper.h"

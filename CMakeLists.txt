@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 project(mydumper)
 file(READ "VERSION" ver_str)
 string(REGEX MATCH "ver=\"([^\"]+)\"" _ ${ver_str})
@@ -44,7 +44,11 @@ if (MARIADB_FOUND AND NOT MARIADB_SSL AND WITH_SSL)
     set(WITH_SSL OFF)
 endif()
 
-set(CMAKE_C_FLAGS "-std=gnu99 -Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -g -Werror ${MYSQL_CFLAGS}")
+if(WIN32)
+  set(CMAKE_C_FLAGS "-std=gnu99 -Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -g ${MYSQL_CFLAGS}")
+else()
+  set(CMAKE_C_FLAGS "-std=gnu99 -Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -g -Werror ${MYSQL_CFLAGS}")
+endif()
 include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE2_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS} )
 
 OPTION(WITH_ASAN "Build with ASAN" OFF)
@@ -108,10 +112,83 @@ INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
 )
 
-INSTALL(FILES mydumper.cnf
-  DESTINATION /etc
-  COMPONENT config
-)
+if(WIN32)
+  get_filename_component(_mysql_lib_dir "${MYSQL_LIBRARIES}" DIRECTORY)
+  get_filename_component(_mingw_prefix "${_mysql_lib_dir}/.." ABSOLUTE)
+  set(_mingw_bin "${_mingw_prefix}/bin")
+  set(_runtime_dlls
+    libwinpthread-1.dll
+    libgcc_s_seh-1.dll
+    libstdc++-6.dll
+    libglib-2.0-0.dll
+    libgthread-2.0-0.dll
+    libgobject-2.0-0.dll
+    libgio-2.0-0.dll
+    libpcre2-8-0.dll
+    libintl-8.dll
+    libiconv-2.dll
+    zlib1.dll
+    libzstd.dll
+    libmariadb.dll
+    libcurl-4.dll
+    libcrypto-3-x64.dll
+    libssl-3-x64.dll
+    libbrotlidec.dll
+    libbrotlicommon.dll
+    libidn2-0.dll
+    libunistring-5.dll
+    libnghttp2-14.dll
+    libnghttp3-9.dll
+    libngtcp2-16.dll
+    libngtcp2_crypto_ossl-0.dll
+    libpsl-5.dll
+    libssh2-1.dll
+  )
+
+  foreach(_dll IN LISTS _runtime_dlls)
+    if(EXISTS "${_mingw_bin}/${_dll}")
+      install(FILES "${_mingw_bin}/${_dll}" DESTINATION bin)
+    endif()
+  endforeach()
+endif()
+
+if(WIN32)
+  set(ETC_DEST "etc")
+else()
+  set(ETC_DEST "/etc")
+endif()
+INSTALL(FILES mydumper.cnf DESTINATION ${ETC_DEST} COMPONENT config)
+
+if(WIN32)
+  install(PROGRAMS
+    package/windows/BackupWizard.ps1
+    package/windows/RestoreWizard.ps1
+    DESTINATION bin
+  )
+endif()
+
+if(WIN32)
+  set(CPACK_GENERATOR "ZIP")
+  find_program(MAKENSIS_EXECUTABLE NAMES makensis)
+  if(MAKENSIS_EXECUTABLE)
+    list(APPEND CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_DISPLAY_NAME "mydumper")
+    set(CPACK_NSIS_PACKAGE_NAME "mydumper")
+    set(CPACK_NSIS_CONTACT "mydumper community")
+    set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/mydumper/mydumper")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+  endif()
+else()
+  set(CPACK_GENERATOR "TGZ")
+endif()
+
+set(CPACK_PACKAGE_NAME "mydumper")
+set(CPACK_PACKAGE_VENDOR "mydumper community")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "mydumper and myloader MySQL backup tools")
+set(CPACK_PACKAGE_VERSION "${VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "mydumper")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+include(CPack)
 
 add_custom_target(dist
   COMMAND git archive --format=tar.gz --prefix=${ARCHIVE_NAME}/

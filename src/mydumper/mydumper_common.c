@@ -27,10 +27,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/wait.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
-#include <sys/file.h>
 #include "mydumper.h"
 #include "mydumper_global.h"
 #include "mydumper_common.h"

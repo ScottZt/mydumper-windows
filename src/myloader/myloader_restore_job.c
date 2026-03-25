@@ -21,7 +21,20 @@
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef G_OS_WIN32
 #include <glib-unix.h>
+#else
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#ifdef DELETE
+#undef DELETE
+#endif
+#endif
 
 #include "myloader.h"
 #include "myloader_restore_job.h"
@@ -494,10 +507,45 @@ gboolean sig_triggered_term(void * user_data) {
 
 GMainLoop * loop=NULL;
 
+#ifdef G_OS_WIN32
+static gint windows_signal_received = 0;
+
+static BOOL WINAPI windows_console_control_handler(DWORD control_type){
+  switch (control_type) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+      g_atomic_int_set(&windows_signal_received, 1);
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+static gboolean windows_signal_check(gpointer data){
+  if (!g_atomic_int_get(&windows_signal_received)) {
+    return TRUE;
+  }
+  g_atomic_int_set(&windows_signal_received, 0);
+  gboolean keep_running = sig_triggered_int(data);
+  if (!keep_running && loop) {
+    g_main_loop_quit(loop);
+  }
+  return keep_running;
+}
+#endif
+
 void *signal_thread(void *data) {
+#ifdef G_OS_WIN32
+  SetConsoleCtrlHandler(windows_console_control_handler, TRUE);
+  loop = g_main_loop_new(NULL, TRUE);
+  g_timeout_add(100, windows_signal_check, data);
+#else
   g_unix_signal_add(SIGINT, sig_triggered_int, data);
   g_unix_signal_add(SIGTERM, sig_triggered_term, data);
   loop = g_main_loop_new (NULL, TRUE);
+#endif
   g_main_loop_run (loop);
   return NULL;
 }
@@ -505,8 +553,11 @@ void *signal_thread(void *data) {
 void stop_signal_thread(){
   g_mutex_lock(shutdown_triggered_mutex);
   g_mutex_unlock(shutdown_triggered_mutex);
-  if (loop)
+  if (loop) {
+    g_main_loop_quit(loop);
     g_main_loop_unref(loop);
+    loop = NULL;
+  }
 //  g_main_loop_quit(loop);
 }
 

@@ -21,8 +21,12 @@
 
 #include <mysql.h>
 
+#ifndef _WIN32
 #include <glib-unix.h>
 #include <sys/statvfs.h>
+#else
+#include <windows.h>
+#endif
 
 #include "mydumper_start_dump.h"
 #include "mydumper_jobs.h"
@@ -111,6 +115,17 @@ void set_disk_limits(guint p_at, guint r_at){
 
 static
 gboolean is_disk_space_ok(guint val){
+#ifdef _WIN32
+  ULARGE_INTEGER free_bytes_available;
+  ULARGE_INTEGER total_number_of_bytes;
+  ULARGE_INTEGER total_number_of_free_bytes;
+  if (GetDiskFreeSpaceExA(output_directory, &free_bytes_available, &total_number_of_bytes, &total_number_of_free_bytes) != 0) {
+    const double available = (double)(free_bytes_available.QuadPart) / 1024 / 1024;
+    return available > val;
+  }
+  g_warning("Disk space check failed");
+  return TRUE;
+#else
   struct statvfs buffer;
   int ret = statvfs(output_directory, &buffer);
   if (!ret) {
@@ -120,6 +135,7 @@ gboolean is_disk_space_ok(guint val){
     g_warning("Disk space check failed");
   }
   return TRUE;
+#endif
 }
 
 static
@@ -151,7 +167,7 @@ void *monitor_disk_space_thread (void *queue){
       previous_state = current_state;
 
     }
-    sleep(10);
+    m_sleep_seconds(10);
   }
   return NULL;
 }
@@ -189,9 +205,9 @@ void *monitor_ftwrl_thread (void *thread_id){
   gchar *query=NULL;
   while (!ftwrl_completed){
     if (ftwrl_found_in_processlist == TRUE) {
-      sleep(ftwrl_max_wait_time);
+      m_sleep_seconds(ftwrl_max_wait_time);
     } else {
-      sleep(1);
+      m_sleep_seconds(1);
     }
     res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
     if (!res){
@@ -284,12 +300,47 @@ gboolean sig_triggered_term(void * user_data) {
   return sig_triggered(user_data,SIGTERM);
 }
 
+#ifdef _WIN32
+static gint windows_signal_received = 0;
+
+static BOOL WINAPI windows_console_control_handler(DWORD control_type){
+  switch (control_type) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+      g_atomic_int_set(&windows_signal_received, 1);
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+static gboolean windows_signal_check(gpointer user_data){
+  if (!g_atomic_int_get(&windows_signal_received)) {
+    return TRUE;
+  }
+  g_atomic_int_set(&windows_signal_received, 0);
+  gboolean keep_running = sig_triggered_int(user_data);
+  if (!keep_running && ((struct configuration *)user_data)->loop) {
+    g_main_loop_quit(((struct configuration *)user_data)->loop);
+  }
+  return keep_running;
+}
+#endif
+
 static 
 void *signal_thread(void *data) {
+#ifdef _WIN32
+  SetConsoleCtrlHandler(windows_console_control_handler, TRUE);
+  ((struct configuration *)data)->loop = g_main_loop_new(NULL, TRUE);
+  g_timeout_add(100, windows_signal_check, data);
+#else
   g_unix_signal_add(SIGINT, sig_triggered_int, data);
   g_unix_signal_add(SIGTERM, sig_triggered_term, data);
   ((struct configuration *)data)->loop  = g_main_loop_new (NULL, TRUE);
-  g_main_loop_run (((struct configuration *)data)->loop);
+#endif
+  g_main_loop_run(((struct configuration *)data)->loop);
   g_message("Ending signal thread");
   return NULL;
 }
@@ -516,7 +567,7 @@ void long_query_wait(MYSQL *conn){
         g_warning("There are queries in PROCESSLIST running longer than "
                        "%us, retrying in %u seconds (%u left).",
                        longquery, longquery_retry_interval, longquery_retries);
-        sleep(longquery_retry_interval);
+        m_sleep_seconds(longquery_retry_interval);
       }
     }
   }

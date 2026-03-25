@@ -334,7 +334,9 @@ int main(int argc, char *argv[]) {
   g_thread_init(NULL);
   set_thread_name("MNT");
 
+#ifndef _WIN32
   signal(SIGCHLD, SIG_IGN);
+#endif
 
   context = load_contex_entries();
 

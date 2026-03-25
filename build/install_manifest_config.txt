@@ -1,0 +1,1 @@
+D:/AI/mydumper/build/_CPack_Packages/win64/NSIS/mydumper-0.21.3-2-win64/config/etc/mydumper.cnf

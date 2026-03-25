@@ -20,6 +20,15 @@
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <stdarg.h>
@@ -998,6 +1007,68 @@ gchar *m_date_time_new_now_local(){
   return g_string_free(datetimestr,FALSE);
 }
 
+char *m_getpass(const char *prompt){
+#ifdef G_OS_WIN32
+  #include <conio.h>
+  if (prompt != NULL) {
+    fputs(prompt, stderr);
+    fflush(stderr);
+  }
+  GString *password_buffer = g_string_sized_new(64);
+  for (;;) {
+    int character = _getch();
+    if (character == '\r' || character == '\n') {
+      fputc('\n', stderr);
+      break;
+    }
+    if (character == 3) {
+      g_string_free(password_buffer, TRUE);
+      return NULL;
+    }
+    if (character == '\b') {
+      if (password_buffer->len > 0) {
+        g_string_truncate(password_buffer, password_buffer->len - 1);
+      }
+      continue;
+    }
+    if (character >= 32 && character <= 126) {
+      g_string_append_c(password_buffer, (gchar)character);
+    }
+  }
+  return g_string_free(password_buffer, FALSE);
+#else
+  char *password_text = getpass(prompt);
+  if (password_text == NULL) {
+    return NULL;
+  }
+  return g_strdup(password_text);
+#endif
+}
+
+struct tm *m_localtime_r(const time_t *timer, struct tm *result){
+#ifdef G_OS_WIN32
+  if (localtime_s(result, timer) != 0) {
+    return NULL;
+  }
+  return result;
+#else
+  return localtime_r(timer, result);
+#endif
+}
+
+void m_sleep_microseconds(guint64 microseconds){
+  guint64 remaining = microseconds;
+  while (remaining > 0) {
+    gulong chunk = remaining > G_MAXULONG ? G_MAXULONG : (gulong)remaining;
+    g_usleep(chunk);
+    remaining -= chunk;
+  }
+}
+
+void m_sleep_seconds(guint seconds){
+  m_sleep_microseconds(((guint64)seconds) * G_USEC_PER_SEC);
+}
+
 #if !GLIB_CHECK_VERSION(2, 68, 0)
 guint
 g_string_replace (GString     *_string,
@@ -1649,7 +1720,7 @@ void *monitor_throttling_thread (void *queue){
       trace("Invalid query: %s", query);
     }
     m_store_result_row_free(mr);
-    sleep(2);
+    m_sleep_seconds(2);
   }
 
   return NULL;

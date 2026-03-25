@@ -82,7 +82,7 @@ void *worker_pmm_thread(void *conf){
     if (pause_pmm)
       write_pmm_entries(content, conf);
     g_mutex_unlock(pmm_mutex);
-    sleep(1);
+    m_sleep_seconds(1);
   }
   return NULL;
 }

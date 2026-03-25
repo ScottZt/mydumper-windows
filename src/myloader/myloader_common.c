@@ -21,9 +21,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#ifndef G_OS_WIN32
+#include <sys/wait.h>
+#else
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#ifdef DELETE
+#undef DELETE
+#endif
+#endif
 
 #include "myloader.h"
 #include "myloader_stream.h"
@@ -642,8 +655,125 @@ gboolean has_exec_per_thread_extension(const gchar *filename){
   return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);
 }
 
+#ifdef G_OS_WIN32
+static gchar *windows_quote_command_argument(const gchar *argument){
+  if (argument == NULL) {
+    return g_strdup("\"\"");
+  }
+
+  gboolean needs_quotes = FALSE;
+  for (const gchar *p = argument; *p != '\0'; p++) {
+    if (*p == ' ' || *p == '\t' || *p == '"') {
+      needs_quotes = TRUE;
+      break;
+    }
+  }
+  if (!needs_quotes) {
+    return g_strdup(argument);
+  }
+
+  GString *quoted = g_string_sized_new(strlen(argument) + 2);
+  g_string_append_c(quoted, '"');
+  for (const gchar *p = argument; *p != '\0'; p++) {
+    if (*p == '"') {
+      g_string_append(quoted, "\\\"");
+    } else {
+      g_string_append_c(quoted, *p);
+    }
+  }
+  g_string_append_c(quoted, '"');
+  return g_string_free(quoted, FALSE);
+}
+
+static gchar *windows_build_command_line(gchar **argv){
+  GString *command_line = g_string_sized_new(256);
+  for (guint i = 0; argv != NULL && argv[i] != NULL; i++) {
+    gchar *quoted = windows_quote_command_argument(argv[i]);
+    if (i > 0) {
+      g_string_append_c(command_line, ' ');
+    }
+    g_string_append(command_line, quoted);
+    g_free(quoted);
+  }
+  return g_string_free(command_line, FALSE);
+}
+#endif
+
 
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec){
+#ifdef G_OS_WIN32
+  guint argc = g_strv_length(exec);
+  if (argc == 0 || exec[0] == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  gunichar2 *sql_fn_w = g_utf8_to_utf16(sql_fn, -1, NULL, NULL, NULL);
+  gunichar2 *sql_fn3_w = g_utf8_to_utf16(sql_fn3, -1, NULL, NULL, NULL);
+  if (sql_fn_w == NULL || sql_fn3_w == NULL) {
+    g_free(sql_fn_w);
+    g_free(sql_fn3_w);
+    errno = EINVAL;
+    return -1;
+  }
+
+  HANDLE input_handle = CreateFileW((LPCWSTR)sql_fn_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE output_handle = CreateFileW((LPCWSTR)sql_fn3_w, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  g_free(sql_fn_w);
+  g_free(sql_fn3_w);
+
+  if (input_handle == INVALID_HANDLE_VALUE || output_handle == INVALID_HANDLE_VALUE) {
+    if (input_handle != INVALID_HANDLE_VALUE) CloseHandle(input_handle);
+    if (output_handle != INVALID_HANDLE_VALUE) CloseHandle(output_handle);
+    errno = EIO;
+    return -1;
+  }
+
+  SetHandleInformation(input_handle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+  SetHandleInformation(output_handle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+
+  gchar *command_line_utf8 = windows_build_command_line(exec);
+  gunichar2 *command_line_w = g_utf8_to_utf16(command_line_utf8, -1, NULL, NULL, NULL);
+  g_free(command_line_utf8);
+  if (command_line_w == NULL) {
+    CloseHandle(input_handle);
+    CloseHandle(output_handle);
+    errno = EINVAL;
+    return -1;
+  }
+
+  STARTUPINFOW startup_info;
+  PROCESS_INFORMATION process_information;
+  ZeroMemory(&startup_info, sizeof(startup_info));
+  ZeroMemory(&process_information, sizeof(process_information));
+  startup_info.cb = sizeof(startup_info);
+  startup_info.dwFlags = STARTF_USESTDHANDLES;
+  startup_info.hStdInput = input_handle;
+  startup_info.hStdOutput = output_handle;
+  startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+  BOOL created = CreateProcessW(NULL, (LPWSTR)command_line_w, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_information);
+  g_free(command_line_w);
+  CloseHandle(input_handle);
+  CloseHandle(output_handle);
+
+  if (!created) {
+    errno = ECHILD;
+    return -1;
+  }
+
+  WaitForSingleObject(process_information.hProcess, INFINITE);
+  DWORD exit_code = 0;
+  GetExitCodeProcess(process_information.hProcess, &exit_code);
+  CloseHandle(process_information.hThread);
+  CloseHandle(process_information.hProcess);
+
+  if (exit_code != 0) {
+    errno = ECHILD;
+    return -1;
+  }
+  return 0;
+#else
   int childpid=fork();
   if(!childpid){
     FILE *sql_file2 = g_fopen(sql_fn,"r");
@@ -655,6 +785,7 @@ int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec){
     execv(exec[0],exec);
   }
   return childpid;
+#endif
 }
 
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename){

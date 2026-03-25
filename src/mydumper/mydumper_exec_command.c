@@ -21,7 +21,6 @@
 #include <glib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <errno.h>
 
 #include "mydumper.h"
@@ -39,6 +38,41 @@ gchar * global_bin = NULL;
 GHashTable* pid_file_table=NULL;
 GMutex *exec_mutex=NULL;
 void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
+#ifdef G_OS_WIN32
+  guint original_argc = g_strv_length(c_arg);
+  gchar **argv = g_new0(gchar *, original_argc + 2);
+  argv[0] = global_bin;
+  guint out_index = 1;
+  for (guint i = 0; i < original_argc; i++) {
+    if (c_arg[i] == NULL) {
+      continue;
+    }
+    if (c_arg[i][0] == '\0') {
+      continue;
+    }
+    argv[out_index++] = c_arg[i];
+  }
+  argv[out_index] = NULL;
+
+  GError *error = NULL;
+  gchar *standard_error = NULL;
+  gint exit_status = 0;
+  gboolean ok = g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &standard_error, &exit_status, &error);
+  g_free(argv);
+  if (!ok) {
+    g_error("Exec command failed: %s", error ? error->message : "unknown error");
+  }
+  if (exit_status != 0) {
+    g_warning("Exec command exit status %d: %s", exit_status, standard_error ? standard_error : "");
+  }
+  g_free(standard_error);
+  if (no_delete == FALSE) {
+    remove(sqe->filename);
+    if (sqe->done) {
+      g_async_queue_push(sqe->done, GINT_TO_POINTER(1));
+    }
+  }
+#else
   int childpid=vfork();
   if(!childpid){
     int fd=0;
@@ -71,6 +105,7 @@ void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
       g_free(_key);
     }
   }
+#endif
 }
 
 
