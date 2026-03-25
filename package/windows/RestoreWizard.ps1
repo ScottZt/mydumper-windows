@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$BackupDir,
   [string]$Mappings,
   [switch]$DropTables
@@ -60,3 +60,4 @@ foreach ($p in $pairs) {
   Pop-Location
   Write-Host ("Done {0}->{1}, ExitCode={2}, Log={3}" -f $src,$dst,$proc.ExitCode,$logPath)
 }
+
