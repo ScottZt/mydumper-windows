@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$DbHost,
   [int]$DbPort,
   [string]$DbUser,
@@ -8,20 +8,20 @@ param(
   [int]$Threads = 8,
   [int]$Rows = 500000
 )
-$defaultHost = if ($DbHost) { $DbHost } else { Read-Host "MySQL 主机（默认 127.0.0.1）" }
+$defaultHost = if ($DbHost) { $DbHost } else { Read-Host "MySQL 涓绘満锛堥粯璁?127.0.0.1锛? }
 if (-not $defaultHost) { $defaultHost = "127.0.0.1" }
-$defaultPort = if ($DbPort) { $DbPort } else { [int](Read-Host "MySQL 端口（默认 3306）") }
+$defaultPort = if ($DbPort) { $DbPort } else { [int](Read-Host "MySQL 绔彛锛堥粯璁?3306锛?) }
 if (-not $defaultPort) { $defaultPort = 3306 }
-$defaultUser = if ($DbUser) { $DbUser } else { Read-Host "MySQL 用户名" }
+$defaultUser = if ($DbUser) { $DbUser } else { Read-Host "MySQL 鐢ㄦ埛鍚? }
 if (-not $DbPassword) {
-  $secure = Read-Host "MySQL 密码" -AsSecureString
+  $secure = Read-Host "MySQL 瀵嗙爜" -AsSecureString
   $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
   [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
   $DbPassword = $plain
 }
-$dbs = if ($Databases) { $Databases } else { Read-Host "请输入要备份的数据库（逗号分隔，例如 trading_db,tick_monitor）" }
-$root = if ($OutputRoot) { $OutputRoot } else { Read-Host "输出目录（默认 D:\backup）" }
+$dbs = if ($Databases) { $Databases } else { Read-Host "璇疯緭鍏ヨ澶囦唤鐨勬暟鎹簱锛堥€楀彿鍒嗛殧锛屼緥濡?trading_db,tick_monitor锛? }
+$root = if ($OutputRoot) { $OutputRoot } else { Read-Host "杈撳嚭鐩綍锛堥粯璁?D:\backup锛? }
 if (-not $root) { $root = "D:\backup" }
 if (-not (Test-Path $root)) { New-Item -ItemType Directory -Force $root | Out-Null }
 $ts = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -78,3 +78,4 @@ if (Test-Path $errLogPath) {
 }
 Write-Host ("Done. ExitCode={0}, Size={1} GB, Dir={2}" -f $exitCode, $finalGB, $dumpDir)
 Write-Host ("Log: {0}" -f $logPath)
+

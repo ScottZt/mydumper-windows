@@ -1,58 +1,42 @@
-# Windows 操作手册（mydumper/myloader）
-
-本文档面向小白用户，目标是用最少操作完成：
-- 备份指定库
-- 同步恢复到新库名（演练库）
-- 过程可见进度，告警写日志，避免刷屏
-
+﻿# Windows 鎿嶄綔鎵嬪唽锛坢ydumper/myloader锛?
+鏈枃妗ｉ潰鍚戝皬鐧界敤鎴凤紝鐩爣鏄敤鏈€灏戞搷浣滃畬鎴愶細
+- 澶囦唤鎸囧畾搴?- 鍚屾鎭㈠鍒版柊搴撳悕锛堟紨缁冨簱锛?- 杩囩▼鍙杩涘害锛屽憡璀﹀啓鏃ュ織锛岄伩鍏嶅埛灞?
 ---
 
-## 1. 安装后你会得到什么
-
-默认安装路径：
-- `C:\Program Files\mydumper\bin\mydumper.exe`
+## 1. 瀹夎鍚庝綘浼氬緱鍒颁粈涔?
+榛樿瀹夎璺緞锛?- `C:\Program Files\mydumper\bin\mydumper.exe`
 - `C:\Program Files\mydumper\bin\myloader.exe`
-- `C:\Program Files\mydumper\bin\BackupWizard.ps1`（备份向导）
-- `C:\Program Files\mydumper\bin\RestoreWizard.ps1`（恢复向导）
+- `C:\Program Files\mydumper\bin\BackupWizard.ps1`锛堝浠藉悜瀵硷級
+- `C:\Program Files\mydumper\bin\RestoreWizard.ps1`锛堟仮澶嶅悜瀵硷級
 
 ---
 
-## 2. 一键备份（推荐）
-
-在 PowerShell 执行：
-
+## 2. 涓€閿浠斤紙鎺ㄨ崘锛?
+鍦?PowerShell 鎵ц锛?
 ```powershell
 & "C:\Program Files\mydumper\bin\BackupWizard.ps1"
 ```
 
-按提示输入：
-- MySQL 主机（默认 `127.0.0.1`）
-- 端口（默认 `3306`）
-- 用户名/密码
-- 库名列表（逗号分隔，例如：`trading_db,tick_monitor`）
-- 输出目录（默认 `D:\backup`）
-
-结果：
-- 自动生成备份目录：`D:\backup\dump_YYYYMMDD_HHMMSS`
-- 屏幕显示进度（写入体积 GB）
-- 详细日志：`<备份目录>\mydumper.log`
+鎸夋彁绀鸿緭鍏ワ細
+- MySQL 涓绘満锛堥粯璁?`127.0.0.1`锛?- 绔彛锛堥粯璁?`3306`锛?- 鐢ㄦ埛鍚?瀵嗙爜
+- 搴撳悕鍒楄〃锛堥€楀彿鍒嗛殧锛屼緥濡傦細`trading_db,tick_monitor`锛?- 杈撳嚭鐩綍锛堥粯璁?`D:\backup`锛?
+缁撴灉锛?- 鑷姩鐢熸垚澶囦唤鐩綍锛歚D:\backup\dump_YYYYMMDD_HHMMSS`
+- 灞忓箷鏄剧ず杩涘害锛堝啓鍏ヤ綋绉?GB锛?- 璇︾粏鏃ュ織锛歚<澶囦唤鐩綍>\mydumper.log`
 
 ---
 
-## 3. 一键恢复到新库名（演练库）
+## 3. 涓€閿仮澶嶅埌鏂板簱鍚嶏紙婕旂粌搴擄級
 
-在 PowerShell 执行：
-
+鍦?PowerShell 鎵ц锛?
 ```powershell
 & "C:\Program Files\mydumper\bin\RestoreWizard.ps1"
 ```
 
-按提示输入：
-- 备份目录（例如：`D:\backup\dump1`）
-- 映射（源库:目标库，逗号分隔）  
-  示例：`trading_db:trading_db_restore,tick_monitor:tick_monitor_restore`
+鎸夋彁绀鸿緭鍏ワ細
+- 澶囦唤鐩綍锛堜緥濡傦細`D:\backup\dump1`锛?- 鏄犲皠锛堟簮搴?鐩爣搴擄紝閫楀彿鍒嗛殧锛? 
+  绀轰緥锛歚trading_db:trading_db_restore,tick_monitor:tick_monitor_restore`
 
-如果目标库已有表，需要覆盖：
+濡傛灉鐩爣搴撳凡鏈夎〃锛岄渶瑕佽鐩栵細
 
 ```powershell
 & "C:\Program Files\mydumper\bin\RestoreWizard.ps1" `
@@ -63,26 +47,21 @@
 
 ---
 
-## 4. 为什么这个流程更稳
-
-向导已自动规避常见坑：
-- 自动修复 `metadata` 的 CRLF 行尾问题（避免 `\u000d= 1` 报错）
-- 备份用时间戳目录，避免“目录非空”冲突
-- 统一使用逗号分隔库名，避免 `-B` 覆盖导致只备份一个库
-- 告警写日志，不在终端刷屏
+## 4. 涓轰粈涔堣繖涓祦绋嬫洿绋?
+鍚戝宸茶嚜鍔ㄨ閬垮父瑙佸潙锛?- 鑷姩淇 `metadata` 鐨?CRLF 琛屽熬闂锛堥伩鍏?`\u000d= 1` 鎶ラ敊锛?- 澶囦唤鐢ㄦ椂闂存埑鐩綍锛岄伩鍏嶁€滅洰褰曢潪绌衡€濆啿绐?- 缁熶竴浣跨敤閫楀彿鍒嗛殧搴撳悕锛岄伩鍏?`-B` 瑕嗙洊瀵艰嚧鍙浠戒竴涓簱
+- 鍛婅鍐欐棩蹇楋紝涓嶅湪缁堢鍒峰睆
 
 ---
 
-## 5. 如何确认成功
+## 5. 濡備綍纭鎴愬姛
 
-### 5.1 备份成功
-- 备份目录存在 `metadata`
-- `metadata` 最后有：
-  - `# Finished dump at: ...`
+### 5.1 澶囦唤鎴愬姛
+- 澶囦唤鐩綍瀛樺湪 `metadata`
+- `metadata` 鏈€鍚庢湁锛?  - `# Finished dump at: ...`
 
-### 5.2 恢复成功
-- myloader 命令退出后没有 `CRITICAL` / `ERROR`
-- 目标库能看到表并查到行数，例如：
+### 5.2 鎭㈠鎴愬姛
+- myloader 鍛戒护閫€鍑哄悗娌℃湁 `CRITICAL` / `ERROR`
+- 鐩爣搴撹兘鐪嬪埌琛ㄥ苟鏌ュ埌琛屾暟锛屼緥濡傦細
 
 ```sql
 SHOW TABLES FROM tick_monitor_restore;
@@ -94,26 +73,18 @@ SELECT COUNT(*) FROM trading_db_restore.orders;
 
 ---
 
-## 6. 常见问题速查
+## 6. 甯歌闂閫熸煡
 
-### Q1：提示找不到 mydumper/myloader
-用绝对路径执行（见上文命令），或把 `C:\Program Files\mydumper\bin` 加到 PATH。
-
-### Q2：恢复时报表已存在
-恢复命令加 `-DropTables`。
-
-### Q3：出现 gzip/zstd 警告
-如果备份是 `.sql` 文件可忽略；只有 `.gz/.zst` 备份才需要对应工具。
-
-### Q4：恢复时偶发 1213 死锁
-通常是并发 DDL/DML 冲突，重试一次即可；必要时先暂停目标库上的其他变更操作。
-
-### Q5：运行 BackupWizard 报“无法覆盖变量 Host”
-这是旧版脚本参数名与 PowerShell 内置只读变量 `$Host` 冲突导致。  
-解决方法：
-- 使用最新安装包重新安装；或
-- 将 `BackupWizard.ps1` 替换为项目里的最新版（参数名已改为 `DbHost/DbPort/DbUser/DbPassword`）。
-- 可直接覆盖安装目录脚本：
+### Q1锛氭彁绀烘壘涓嶅埌 mydumper/myloader
+鐢ㄧ粷瀵硅矾寰勬墽琛岋紙瑙佷笂鏂囧懡浠わ級锛屾垨鎶?`C:\Program Files\mydumper\bin` 鍔犲埌 PATH銆?
+### Q2锛氭仮澶嶆椂鎶ヨ〃宸插瓨鍦?鎭㈠鍛戒护鍔?`-DropTables`銆?
+### Q3锛氬嚭鐜?gzip/zstd 璀﹀憡
+濡傛灉澶囦唤鏄?`.sql` 鏂囦欢鍙拷鐣ワ紱鍙湁 `.gz/.zst` 澶囦唤鎵嶉渶瑕佸搴斿伐鍏枫€?
+### Q4锛氭仮澶嶆椂鍋跺彂 1213 姝婚攣
+閫氬父鏄苟鍙?DDL/DML 鍐茬獊锛岄噸璇曚竴娆″嵆鍙紱蹇呰鏃跺厛鏆傚仠鐩爣搴撲笂鐨勫叾浠栧彉鏇存搷浣溿€?
+### Q5锛氳繍琛?BackupWizard 鎶モ€滄棤娉曡鐩栧彉閲?Host鈥?杩欐槸鏃х増鑴氭湰鍙傛暟鍚嶄笌 PowerShell 鍐呯疆鍙鍙橀噺 `$Host` 鍐茬獊瀵艰嚧銆? 
+瑙ｅ喅鏂规硶锛?- 浣跨敤鏈€鏂板畨瑁呭寘閲嶆柊瀹夎锛涙垨
+- 灏?`BackupWizard.ps1` 鏇挎崲涓洪」鐩噷鐨勬渶鏂扮増锛堝弬鏁板悕宸叉敼涓?`DbHost/DbPort/DbUser/DbPassword`锛夈€?- 鍙洿鎺ヨ鐩栧畨瑁呯洰褰曡剼鏈細
   ```powershell
   Copy-Item "D:\AI\mydumper\package\windows\BackupWizard.ps1" "C:\Program Files\mydumper\bin\BackupWizard.ps1" -Force
   Copy-Item "D:\AI\mydumper\package\windows\RestoreWizard.ps1" "C:\Program Files\mydumper\bin\RestoreWizard.ps1" -Force
@@ -121,10 +92,20 @@ SELECT COUNT(*) FROM trading_db_restore.orders;
 
 ---
 
-## 7. 最简使用建议
+## 7. 鏈€绠€浣跨敤寤鸿
 
-1. 先用 `BackupWizard.ps1` 做一次指定库备份  
-2. 再用 `RestoreWizard.ps1` 按“源库:新库”映射做演练恢复  
-3. 最后用 `SHOW TABLES` 和 `COUNT(*)` 校验
+1. 鍏堢敤 `BackupWizard.ps1` 鍋氫竴娆℃寚瀹氬簱澶囦唤  
+2. 鍐嶇敤 `RestoreWizard.ps1` 鎸夆€滄簮搴?鏂板簱鈥濇槧灏勫仛婕旂粌鎭㈠  
+3. 鏈€鍚庣敤 `SHOW TABLES` 鍜?`COUNT(*)` 鏍￠獙
 
-如果有报错，把日志最后 30 行贴给我即可快速定位。  
+濡傛灉鏈夋姤閿欙紝鎶婃棩蹇楁渶鍚?30 琛岃创缁欐垜鍗冲彲蹇€熷畾浣嶃€? 
+
+---
+
+## 8. 瀹夎鍚庣涓€姝ワ細妫€鏌ユ槸鍚︿负鏈€鏂拌剼鏈?
+鍦?PowerShell 鎵ц杩欐潯鍛戒护锛?
+```powershell
+Get-Content "C:\Program Files\mydumper\bin\BackupWizard.ps1" -TotalCount 30 | Select-String "DbHost|璇疯緭鍏ヨ澶囦唤鐨勬暟鎹簱"
+```
+
+鍒ゅ畾鏍囧噯锛?- 鑻ヨ兘鐪嬪埌 `DbHost` 鎴?`璇疯緭鍏ヨ澶囦唤鐨勬暟鎹簱`锛岃鏄庝綘宸叉槸鏈€鏂扮増鑴氭湰銆?- 鑻ョ湅涓嶅埌锛屽缓璁噸鏂板畨瑁呮渶鏂?exe锛屾垨鎵嬪姩瑕嗙洊鑴氭湰鏂囦欢銆?
